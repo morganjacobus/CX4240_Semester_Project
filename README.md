@@ -6,3 +6,4 @@ https://guides.github.com/activities/hello-world/
 https://www.youtube.com/watch?v=kFix7UDJ7LA
 
 # Working with Text Data
+http://scikit-learn.org/stable/tutorial/text_analytics/working_with_text_data.html
