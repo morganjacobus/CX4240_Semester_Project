@@ -11,3 +11,5 @@ n = sum(1 for line in open(filename)) - 1
 s = 1000
 skip = sorted(rand.sample(xrange(1,n+1),n-s))
 df = pd.read_csv(filename, skiprows = skip)
+
+body = df["Body"]
