@@ -16,6 +16,5 @@ count_vect = CountVectorizer()
 X_train_counts = count_vect.fit_transform(df['Body'])
 X_train_counts.shape
 count_vect.vocabulary_.get(u'algorithm')
-tf_transformer = TfidfTransformer(use_idf=False).fit(X_train_counts)
+tf_transformer = TfidfTransformer()
 X_train_tfidf = tf_transformer.fit_transform(X_train_counts)
-X_train_tf = tf_transformer.transform(X_train_counts)
