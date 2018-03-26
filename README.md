@@ -10,6 +10,10 @@ http://scikit-learn.org/stable/tutorial/text_analytics/working_with_text_data.ht
 
 http://scikit-learn.org/stable/modules/multiclass.html#multiclass
 
+# Working With Large Datasets in Python
+
+http://pandas-docs.github.io/pandas-docs-travis/io.html#iterating-through-files-chunk-by-chunk
+
 # Python POS-Tagger
 http://www.nltk.org/book/ch05.html
 
