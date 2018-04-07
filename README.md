@@ -21,3 +21,6 @@ http://www.nltk.org/book/ch05.html
 
 # Random Forest Classifier in scikitlearn
 http://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html
+
+# MultiLabel Classification
+http://scikit.ml/api/classify.html#ensemble-approaches
