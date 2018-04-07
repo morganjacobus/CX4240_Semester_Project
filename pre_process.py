@@ -13,6 +13,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.feature_extraction.text import HashingVectorizer
 from sklearn.feature_extraction import text
 from sklearn.ensemble import RandomForestClassifier
+from skmultilearn.ensemble import RakelD
 from sklearn.pipeline import Pipeline
 import re
 from itertools import chain
@@ -27,7 +28,7 @@ filename = "C:\Users\morga\Documents\Georgia Tech\Classes\CX 4240\Data\Train.csv
 """Load Data Into Iterable Object"""
 #Uncomment end portion if trying to iterate piecewise
 #chunks = pd.read_csv(filename,chunksize = 10000,index_col=0)
-chunks = pd.read_csv(filename,chunksize = 10000,index_col=0,iterator = True)
+chunks = pd.read_csv(filename,chunksize = 1000,index_col=0,iterator = True)
 
 """Retrieve Tags/y_train for Entire Dataset"""
 #Use only if iterator = True is commented out
@@ -46,26 +47,31 @@ print(len(list(set(chain(*labels)))))
 unique_labels = list(set(chain(*labels)))    
 """Retrieve Subset of Data"""
 #Use only when iterator = true is not commented
-subset = chunks.get_chunk(10001)
+subset = chunks.get_chunk(1001)
 #Combines title and body attributes
 subset["Text"] = subset["Title"] + " " + subset["Body"]
 #Create empty list to append split tags to
 labels = []
 for item in subset["Tags"]:
     labels.append(item.split())
+subset["labels"] = labels
 #Binarizes tags into y_train matrix
 y_train = MultiLabelBinarizer().fit_transform(subset["labels"])
 
 """Count Vectorizer to X_train FOR SUBSET ONLY"""
 vectorizer = CountVectorizer(stop_words=text.ENGLISH_STOP_WORDS)
 vectorizer.fit(subset["Text"])
-print(vectorizer.vocabulary_)
-print(type(vectorizer.vocabulary_))
+#print(vectorizer.vocabulary_)
+#print(type(vectorizer.vocabulary_))
 X_train = []
 vector = vectorizer.transform(subset["Text"])
 X_train = vector.toarray()
 counts = list(chain(*X_train))
 c = Counter(counts)
+
+"""Random Forest for Count Vectorizer"""
+base_classifier = RandomForestClassifier()
+
 """Count Vectorizer Histogram FOR SUBSET ONLY"""
 c = vectorizer.vocabulary_.values()
 
