@@ -24,3 +24,5 @@ http://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestCl
 
 # MultiLabel Classification
 http://scikit.ml/api/classify.html#ensemble-approaches
+
+https://www.analyticsvidhya.com/blog/2017/08/introduction-to-multi-label-classification/
