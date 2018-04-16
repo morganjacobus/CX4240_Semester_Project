@@ -1,3 +1,4 @@
+
 # -*- coding: utf-8 -*-
 """
 Pre-Processing Python Script
@@ -13,7 +14,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.feature_extraction.text import HashingVectorizer
 from sklearn.feature_extraction import text
 from sklearn.ensemble import RandomForestClassifier
-from skmultilearn.ensemble import RakelD
+from skmultilearn.ensemble import LabelSpacePartitioningClassifier
 from sklearn.pipeline import Pipeline
 import re
 from itertools import chain
@@ -21,6 +22,9 @@ from scipy import sparse
 from scipy.optimize import curve_fit
 import math
 from collections import Counter
+from skmultilearn.problem_transform import LabelPowerset
+from skmultilearn.cluster import IGraphLabelCooccurenceClusterer
+
 """Import Training Data"""
 filename = "C:\Users\morga\Documents\Georgia Tech\Classes\CX 4240\Data\Train.csv"
 #filename = "Train.csv"
