@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 """
 Pre-Processing Python Script
@@ -14,44 +13,43 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.feature_extraction.text import HashingVectorizer
 from sklearn.feature_extraction import text
 from sklearn.ensemble import RandomForestClassifier
-from skmultilearn.ensemble import LabelSpacePartitioningClassifier
+from skmultilearn.ensemble import RakelD
 from sklearn.pipeline import Pipeline
+from skmultilearn.problem_transform import LabelPowerset
 import re
 from itertools import chain
 from scipy import sparse
 from scipy.optimize import curve_fit
 import math
 from collections import Counter
-from skmultilearn.problem_transform import LabelPowerset
-from skmultilearn.cluster import IGraphLabelCooccurenceClusterer
-
 """Import Training Data"""
 filename = "C:\Users\morga\Documents\Georgia Tech\Classes\CX 4240\Data\Train.csv"
+filename_test = "C:\Users\morga\Documents\Georgia Tech\Classes\CX 4240\Data\Test.csv"
 #filename = "Train.csv"
 
 """Load Data Into Iterable Object"""
 #Uncomment end portion if trying to iterate piecewise
 #chunks = pd.read_csv(filename,chunksize = 10000,index_col=0)
 chunks = pd.read_csv(filename,chunksize = 1000,index_col=0,iterator = True)
-
+chunks_test = pd.read_csv(filename_test,chunksize = 1000, index_col = 0, iterator = True)
 """Retrieve Tags/y_train for Entire Dataset"""
 #Use only if iterator = True is commented out
-labels = []
-i = 1
-index = []
-length = []
-for chunk in chunks:
-    for item in chunk["Tags"]:
-        labels.append(item.split())
-    index.append(i*10000)
+#labels = []
+#i = 1
+#index = []
+#length = []
+#for chunk in chunks:
+#    for item in chunk["Tags"]:
+#        labels.append(item.split())
+#    index.append(i*10000)
     #length.append(len(MultiLabelBinarizer().fit_transform(labels)))
     #Uncomment if memory is good
 #y_Train = MultiLabelBinarizer().fit_transform(labels)
 print(len(list(set(chain(*labels)))))    
 unique_labels = list(set(chain(*labels)))    
-"""Retrieve Subset of Data"""
+"""Retrieve Subset of Data for X_train"""
 #Use only when iterator = true is not commented
-subset = chunks.get_chunk(1001)
+subset = chunks.get_chunk(1000)
 #Combines title and body attributes
 subset["Text"] = subset["Title"] + " " + subset["Body"]
 #Create empty list to append split tags to
@@ -60,7 +58,12 @@ for item in subset["Tags"]:
     labels.append(item.split())
 subset["labels"] = labels
 #Binarizes tags into y_train matrix
-y_train = MultiLabelBinarizer().fit_transform(subset["labels"])
+mlb = MultiLabelBinarizer()
+y_train = mlb.fit_transform(subset["labels"])
+
+"""Retrieve subset of data for X_test"""
+subset_test = chunks_test.get_chunk(1000)
+subset_test["Text"] = subset_test["Title"] + " " + subset_test["Body"]
 
 """Count Vectorizer to X_train FOR SUBSET ONLY"""
 vectorizer = CountVectorizer(stop_words=text.ENGLISH_STOP_WORDS)
@@ -70,11 +73,38 @@ vectorizer.fit(subset["Text"])
 X_train = []
 vector = vectorizer.transform(subset["Text"])
 X_train = vector.toarray()
-counts = list(chain(*X_train))
-c = Counter(counts)
+#counts = list(chain(*X_train))
+#c = Counter(counts)
+
+"""Count Vectorizer to X_test for subset_test"""
+vectorizer_text = CountVectorizer(stop_words=text.ENGLISH_STOP_WORDS)
+vectorizer.fit(subset_test["Text"])
+X_test = []
+vector_test = vectorizer.transform(subset_test["Text"])
+X_test = vector.toarray()
+
 
 """Random Forest for Count Vectorizer"""
 base_classifier = RandomForestClassifier()
+problem_transform_classifier = LabelPowerset(classifier = base_classifier,
+        require_dense = [False,False])
+classifier = RakelD(problem_transform_classifier,len(y_train))
+classifier.fit(X_train,y_train)
+
+predictions = classifier.predict(X_test)
+mlb.inverse_transform(predictions)
+
+
+
+
+
+
+
+
+
+
+
+
 
 """Count Vectorizer Histogram FOR SUBSET ONLY"""
 c = vectorizer.vocabulary_.values()
