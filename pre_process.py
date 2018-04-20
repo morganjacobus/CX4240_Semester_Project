@@ -74,11 +74,11 @@ def xTest(vectorizer,subset):
     X_test = vector_test.toarray()
     return X_test
 
-def output(outList,y_train):
+def output(outList,test_set):
     output_lables = []
     for x in outList:
         output_lables.append(" ".join(x))
-    idLable = list(range(1,len(y_train)+1))
+    idLable = list(range(1,len(test_set)+1))
     d = {"Id":idLable,"Tags":output_lables}
     final_output = pd.DataFrame(d)
     return final_output
@@ -105,8 +105,7 @@ classifier = RakelD(problem_transform_classifier,len(y_train))
 classifier.fit(X_train,y_train)
 predictions = classifier.predict(X_test)
 output_list = mlb.inverse_transform(predictions)
-count_vec_output = output(output_list,y_train)
-
+count_vec_output = output(output_list,X_test)
 #------------------------------------------------#
 
 
