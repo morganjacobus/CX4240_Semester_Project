@@ -45,60 +45,100 @@ chunks_test = pd.read_csv(filename_test,chunksize = 1000, index_col = 0, iterato
     #length.append(len(MultiLabelBinarizer().fit_transform(labels)))
     #Uncomment if memory is good
 #y_Train = MultiLabelBinarizer().fit_transform(labels)
-print(len(list(set(chain(*labels)))))    
-unique_labels = list(set(chain(*labels)))    
-"""Retrieve Subset of Data for X_train"""
-#Use only when iterator = true is not commented
-subset = chunks.get_chunk(1000)
-#Combines title and body attributes
-subset["Text"] = subset["Title"] + " " + subset["Body"]
-#Create empty list to append split tags to
-labels = []
-for item in subset["Tags"]:
-    labels.append(item.split())
-subset["labels"] = labels
-#Binarizes tags into y_train matrix
-mlb = MultiLabelBinarizer()
-y_train = mlb.fit_transform(subset["labels"])
+#print(len(list(set(chain(*labels)))))    
+#unique_labels = list(set(chain(*labels)))
 
-"""Retrieve subset of data for X_test"""
-subset_test = chunks_test.get_chunk(1000)
-subset_test["Text"] = subset_test["Title"] + " " + subset_test["Body"]
+def subsetData(chunk,num):
+      subset = chunk.get_chunk(num)
+      subset["Text"] = subset["Title"] + " " + subset["Body"]
+      return subset
+  
+def yLabel(subset,binarizer):
+    labels = []
+    for item in subset["Tags"]:
+        labels.append(item.split())
+    subset["labels"] = labels
+    mlb = binarizer
+    y_train = mlb.fit_transform(subset["labels"])
+    return y_train, mlb
 
-"""Count Vectorizer to X_train FOR SUBSET ONLY"""
-vectorizer = CountVectorizer(stop_words=text.ENGLISH_STOP_WORDS)
-vectorizer.fit(subset["Text"])
-#print(vectorizer.vocabulary_)
-#print(type(vectorizer.vocabulary_))
-X_train = []
-vector = vectorizer.transform(subset["Text"])
-X_train = vector.toarray()
-#counts = list(chain(*X_train))
-#c = Counter(counts)
+def vectorizer(vecMethod,subset):
+    vectorizer = vecMethod
+    vectorizer.fit(subset)
+    vector = vectorizer.transform(subset)
+    X_vector = vector.toarray()
+    return X_vector, vectorizer
 
-"""Count Vectorizer to X_test for subset_test"""
-vectorizer_text = CountVectorizer(stop_words=text.ENGLISH_STOP_WORDS)
-vectorizer.fit(subset_test["Text"])
-X_test = []
-vector_test = vectorizer.transform(subset_test["Text"])
-X_test = vector.toarray()
+def xTest(vectorizer,subset):
+    vector_test = vectorizer.transform(subset)
+    X_test = vector_test.toarray()
+    return X_test
 
+def output(outList,y_train):
+    output_lables = []
+    for x in outList:
+        output_lables.append(" ".join(x))
+    idLable = list(range(1,len(y_train)+1))
+    d = {"Id":idLable,"Tags":output_lables}
+    final_output = pd.DataFrame(d)
+    return final_output
+
+#----------------Load Data---------------------#
+df = subsetData(chunks,1000)    
+df_test = subsetData(chunks_test,1000)
+#---------------------------------------------#
+
+#---------------Create y Label Matrix---------#
+y_train, mlb = yLabel(df,MultiLabelBinarizer())
+#---------------------------------------------#
+
+#--------Count Vecotrizer-----------------------#
+"""Create X_train, y_train, and X_test"""
+X_train, vect = vectorizer(CountVectorizer(stop_words=text.ENGLISH_STOP_WORDS),df["Text"])
+X_test = xTest(vect,df_test["Text"])
 
 """Random Forest for Count Vectorizer"""
-base_classifier = RandomForestClassifier()
+base_classifier = RandomForestClassifier(random_state = 123)
 problem_transform_classifier = LabelPowerset(classifier = base_classifier,
         require_dense = [False,False])
 classifier = RakelD(problem_transform_classifier,len(y_train))
 classifier.fit(X_train,y_train)
-
 predictions = classifier.predict(X_test)
-mlb.inverse_transform(predictions)
+output_list = mlb.inverse_transform(predictions)
+count_vec_output = output(output_list,y_train)
+
+#------------------------------------------------#
 
 
+#---------------------Tfidf Vectorizer--------------------#
+X_train_tf_idf, tf_idf = vectorizer(TfidfVectorizer(),df["Text"])
+X_test_tf_idf = xTest(tf_idf,df_test["Text"])
+
+"""Random Forest for TfIdf Vectorizer"""
+base_classifier = RandomForestClassifier()
+problem_transform_classifier = LabelPowerset(classifier = base_classifier,
+        require_dense = [False,False])
+classifier = RakelD(problem_transform_classifier,len(y_train))
+classifier.fit(X_train_tf_idf,y_train)
+predictions = classifier.predict(X_test_tf_idf)
+output_list = mlb.inverse_transform(predictions)
+tf_idf_output = output(output_list,y_train)
+#----------------------------------------------------------#
 
 
+#--------------------Hashing Vectorizer--------------------#
+X_train_hash , hashVec = vectorizer(HashingVectorizer(n_features = 200),df["Text"])
+X_test_hash = xTest(hashVec,df_test["Text"])
 
-
+"""Random Forest for Hashing Vectorizer"""
+base_classifier = RandomForestClassifier()
+problem_transform_classifier = LabelPowerset(classifier = base_classifier,
+        require_dense = [False,False])
+classifier = RakelD(problem_transform_classifier,len(y_train))
+classifier.fit(X_train_hash,y_train)
+predictions = classifier.predict(X_test_hash)
+output_list = mlb.inverse_transform(predictions)
+hash_output = output(output_list,y_train)
 
 
 
