@@ -33,47 +33,31 @@ filename_test = "C:\Users\morga\Documents\Georgia Tech\Classes\CX 4240\Data\Test
 """Load Data Into Iterable Object"""
 #Uncomment end portion if trying to iterate piecewise
 #chunks = pd.read_csv(filename,chunksize = 10000,index_col=0)
-chunks = pd.read_csv(filename,chunksize = 1000,index_col=0,iterator = True)
-chunks_test = pd.read_csv(filename_test,chunksize = 1000, index_col = 0, iterator = True)
+#chunks = pd.read_csv(filename,chunksize = 1000,index_col=0,iterator = True)
+#chunks_test = pd.read_csv(filename_test,chunksize = 1000, index_col = 0, iterator = True)
 
-
-"""Retrieve Tags/y_train for Entire Dataset"""
-#Use only if iterator = True is commented out
-#labels = []
-#i = 1
-#index = []
-#length = []
-#for chunk in chunks:
-#    for item in chunk["Tags"]:
-#        labels.append(item.split())
-#    index.append(i*10000)
-#    length.append(len(MultiLabelBinarizer().fit_transform(labels)))
-#    Uncomment if memory is good
-#y_Train = MultiLabelBinarizer().fit_transform(labels)
-#print(len(list(set(chain(*labels)))))    
-#unique_labels = list(set(chain(*labels)))
 
 def subsetData(chunk,num):
       subset = chunk.get_chunk(num)
       subset["Text"] = subset["Title"] + " " + subset["Body"]
       return subset
 
-def subsetData2(filename,num,column):
+def subsetData2(filename,num,column_start,column_end):
       subset = pd.read_csv(filename,nrows=num)
       #subset["Text"] = subset["Title"] + " " + subset["Body"]
-      return subset[column]
+      return subset.iloc[:,column_start:column_end]
 
 
 def yLabel(subset,binarizer):
-    labels = []
-    for item in subset["Tags"]:
-        labels.append(item.split())
-    subset["labels"] = labels
-    mlb = binarizer
-    mlb.fit(subset["labels"])
-    y_train = mlb.transform(subset["labels"])
-    return y_train, mlb
-
+   labels = []
+   for index,item in subset.iterrows():
+       labels.append(item["Tags"].split())
+   subset["Tags"] = labels
+   mlb = binarizer
+   mlb.fit(subset["Tags"])
+   y_train = mlb.transform(subset["Tags"])
+   return y_train, mlb
+ 
 def vectorizer(vecMethod,subset):
     vectorizer = vecMethod
     vectorizer.fit(subset)
@@ -86,11 +70,11 @@ def xTest(vectorizer,subset):
     X_test = vector_test
     return X_test
 
-def output(outList,test_set):
+def output(outList,test_set_length):
     output_lables = []
     for x in outList:
         output_lables.append(" ".join(x))
-    idLable = list(range(1,len(test_set)+1))
+    idLable = list(range(1,test_set_length+1))
     d = {"Id":idLable,"Tags":output_lables}
     final_output = pd.DataFrame(d)
     return final_output
@@ -100,48 +84,39 @@ def output(outList,test_set):
 
 
 #----------------Load Data X_train/y_train---------------------#
-df = subsetData(chunks,1)
-df_test = subsetData(chunks_test,1)
-df_1, df_2 = df[:1000000], df[1000000:]
-df_test_1, df_test_2 = df_test[:1000000], df_test[1000000:]
+#df = subsetData(chunks,1)
+#df_test = subsetData(chunks_test,1)
+#df_1, df_2 = df[:1000000], df[1000000:]
+#df_test_1, df_test_2 = df_test[:1000000], df_test[1000000:]
 """------------------Count Vectorizer----------------------------"""
 #---------------Load Data X_train/y_train/X_test---------#
-y_train, mlb = yLabel(df,MultiLabelBinarizer(sparse_output = True))
-X_train, vect = vectorizer(CountVectorizer(max_features = 40000,stop_words=text.ENGLISH_STOP_WORDS),df["Text"])
-X_test = xTest(vect,df_test["Text"])
+#y_train, mlb = yLabel(df,MultiLabelBinarizer(sparse_output = True))
+#X_train, vect = vectorizer(CountVectorizer(max_features = 40000,stop_words=text.ENGLISH_STOP_WORDS),df["Text"])
+#X_test = xTest(vect,df_test["Text"])
 #---------------------------------------------#
+
+df = subsetData2(filename,4000000,2,4)
+train_length = 4000000
+df_test = subsetData2(filename_test,2000000,2,3)
+test_set_length = len(df_test)
+y_train, mlb = yLabel(df,MultiLabelBinarizer(sparse_output = True))
+X_train, vect = vectorizer(CountVectorizer(max_features = 500000,stop_words=text.ENGLISH_STOP_WORDS),df["Body"])
+X_test = xTest(vect,df_test["Body"])
 
 #--------Random Forest Classifier-----------------------#
 """Random Forest for Count Vectorizer"""
 base_classifier = RandomForestClassifier(random_state = 123)
 problem_transform_classifier = LabelPowerset(classifier = base_classifier,
         require_dense = [False,False])
-classifier = RakelD(problem_transform_classifier,len(df))
+classifier = RakelD(problem_transform_classifier,train_length)
 classifier.fit(X_train,y_train)
 predictions = classifier.predict(X_test)
 output_list = mlb.inverse_transform(predictions)
-count_vec_output = output(output_list,X_test)
+count_vec_output = output(output_list,test_set_length)
 #------------------------------------------------#
 """----------------------------------------------------------------"""
 
 
-df = subsetData2(filename,6000000,"Body")
-df_labels = subsetData2(filename,6000000,"Tags")
-df_test = subsetData2(filename_test,2000000,"Body")
-y_train, mlb = yLabel(df,MultiLabelBinarizer(sparse_output = True))
-X_train, vect = vectorizer(CountVectorizer(max_features = 40000,stop_words=text.ENGLISH_STOP_WORDS),df)
-X_test = xTest(vect,df_test["Text"])
-#chunksize = 100000
-#mlb = MultiLabelBinarizer(sparse_output = True)
-#vec = CountVectorizer(max_features = 40000,stop_words=text.ENGLISH_STOP_WORDS)
-#for chunk in pd.read_csv(filename,chunksize=chunksize):
-#    chunk["Text"] = chunk["Title"] + " " + chunk["Body"]
-#    labels = []
-#    for item in chunk["Tags"]:
-#        labels.append(item.split())
-#    chunk["labels"] = labels
-#    mlb.fit(chunk["labels"])
-#    vec.fit(chunk["Text"])
 
 
 
@@ -179,29 +154,39 @@ tf_idf_output = output(output_list,X_test_tf_idf)
 
 
 #--------------------Hashing Vectorizer--------------------#
-X_train_hash , hashVec = vectorizer(HashingVectorizer(n_features = 20),df["Text"])
-X_train_hash_1, hashVec = vectorizer(HashingVectorizer(n_features = 20),df_1["Text"])
-X_train_hash_2, hashVec = vectorizer(hashVec,df_2["Text"])
+X_train_hash , hashVec = vectorizer(HashingVectorizer(n_features = 20),df["Body"])
 y_train_hash, mlb = yLabel(df_1,MultiLabelBinarizer(sparse_output = True))
-X_test_full = xTest(hashVec,df_test["Text"])
+X_test_full = xTest(hashVec,df_test["Body"])
 
-#X_test_hash_1 = xTest(hashVec,df_test_1["Text"])
-#X_test_hash_2 = xTest(hashVec,df_test_2["Text"])
-#X_test_hash_1_df = pd.DataFrame(X_test_hash_1)
-#X_test_hash_2_df = pd.DataFrame(X_test_hash_2)
-#X_test_full = pd.concat([X_test_hash_1_df,X_test_hash_2_df])
 """Random Forest for Hashing Vectorizer"""
 base_classifier = RandomForestClassifier()
 problem_transform_classifier = LabelPowerset(classifier = base_classifier,
         require_dense = [False,False])
-classifier = RakelD(problem_transform_classifier,len(X_train_hash_1))
-classifier.fit(X_train_hash_1,y_train_hash)
+classifier = RakelD(problem_transform_classifier,train_length)
+classifier.fit(X_train_hash,y_train_hash)
 predictions = classifier.predict(X_test_full)
 output_list = mlb.inverse_transform(predictions)
-hash_output = output(output_list,X_test_full)
+hash_output = output(output_list,test_set_length)
 hash_output.to_csv("hash_output.csv")
 
 
+
+
+"""Retrieve Tags/y_train for Entire Dataset"""
+#Use only if iterator = True is commented out
+#labels = []
+#i = 1
+#index = []
+#length = []
+#for chunk in chunks:
+#    for item in chunk["Tags"]:
+#        labels.append(item.split())
+#    index.append(i*10000)
+#    length.append(len(MultiLabelBinarizer().fit_transform(labels)))
+#    Uncomment if memory is good
+#y_Train = MultiLabelBinarizer().fit_transform(labels)
+#print(len(list(set(chain(*labels)))))    
+#unique_labels = list(set(chain(*labels)))
 
 
 
