@@ -100,7 +100,7 @@ train_length = 4000000
 df_test = subsetData2(filename_test,2000000,2,3)
 test_set_length = len(df_test)
 y_train, mlb = yLabel(df,MultiLabelBinarizer(sparse_output = True))
-X_train, vect = vectorizer(CountVectorizer(max_features = 500000,stop_words=text.ENGLISH_STOP_WORDS),df["Body"])
+X_train, vect = vectorizer(CountVectorizer(max_features = 50000,stop_words=text.ENGLISH_STOP_WORDS),df["Body"])
 X_test = xTest(vect,df_test["Body"])
 
 #--------Random Forest Classifier-----------------------#
