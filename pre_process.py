@@ -86,9 +86,9 @@ def output(outList,test_set_length):
 
 #---------------Load Data X_train/y_train/X_test---------#
 #
-df = subsetData(filename,25000,2,4)
+df = subsetData(filename,10000,2,4)
 
-params = [5,7,10]
+params = [5,10]
 
 #------------------Count Vectorizer----------------------------#
 X_train_count_vec, vect = vectorizer(CountVectorizer(stop_words=text.ENGLISH_STOP_WORDS),df["Body"])
@@ -97,7 +97,6 @@ y_train_count_vec, mlb = yLabel2(df["Body"].values,MultiLabelBinarizer(sparse_ou
 X_train, X_test, y_train, y_test = train_test_split(X_train_count_vec,y_train_count_vec, test_size = 0.2,random_state = 0)
 
 for param in params:
-"""Decision Tree for Count Vectorizer"""
     start = time.time()
     base_classifier = DecisionTreeClassifier(max_depth = 10)
     problem_transform_classifier = LabelPowerset(classifier = base_classifier,
@@ -129,7 +128,6 @@ y_train_tf_idf, mlb = yLabel2(df["Body"].values,MultiLabelBinarizer(sparse_outpu
 X_train, X_test, y_train, y_test = train_test_split(X_train_tf_idf,y_train_tf_idf, test_size = 0.2,random_state = 0)
 
 for param in params:
-"""Decision Tree for TfIdf Vectorizer"""
     start = time.time()
     base_classifier = DecisionTreeClassifier(max_depth = 10)
     problem_transform_classifier = LabelPowerset(classifier = base_classifier,
@@ -155,12 +153,11 @@ for param in params:
 
 #--------------------Hashing Vectorizer--------------------#
 X_train_hash , hashVec = vectorizer(HashingVectorizer(n_features = 50),df["Body"])
-y_train_hash, mlb = yLabel(df["Body"].values,MultiLabelBinarizer(sparse_output = True))
+y_train_hash, mlb = yLabel2(df["Body"].values,MultiLabelBinarizer(sparse_output = True))
 
 X_train, X_test, y_train, y_test = train_test_split(X_train_hash,y_train_hash, test_size = 0.2,random_state = 0)
 
 for param in params:
-"""Decision Tree for Hashing Vectorizer"""
     start = time.time()
     base_classifier = DecisionTreeClassifier(max_depth = 10)
     problem_transform_classifier = LabelPowerset(classifier = base_classifier,
