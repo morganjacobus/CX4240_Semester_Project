@@ -14,15 +14,12 @@ import scipy.sparse as sps
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MultiLabelBinarizer
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.feature_extraction.text import HashingVectorizer
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer, HashingVectorizer 
 from sklearn.feature_extraction import text
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.naive_bayes import GaussianNB
 from skmultilearn.ensemble import RakelD
 from skmultilearn.ensemble import RakelO
-from sklearn.pipeline import Pipeline
+from sklearn.metrics import f1_score, hamming_loss
+from sklearn.model_selection import train_test_split
 from skmultilearn.problem_transform import LabelPowerset
 from itertools import chain
 from scipy import sparse
@@ -33,24 +30,12 @@ from collections import Counter
 filename = "C:\Users\morga\Documents\Georgia Tech\Classes\CX 4240\Data\Train.csv"
 filename_test = "C:\Users\morga\Documents\Georgia Tech\Classes\CX 4240\Data\Test.csv"
 #filename = "Train.csv"
+#filename_test = "Test.csv"
 
-"""Load Data Into Iterable Object"""
-#Uncomment end portion if trying to iterate piecewise
-#chunks = pd.read_csv(filename,chunksize = 10000,index_col=0)
-#chunks = pd.read_csv(filename,chunksize = 1000,index_col=0,iterator = True)
-#chunks_test = pd.read_csv(filename_test,chunksize = 1000, index_col = 0, iterator = True)
-
-
-def subsetData(chunk,num):
-      subset = chunk.get_chunk(num)
-      subset["Text"] = subset["Title"] + " " + subset["Body"]
-      return subset
-
-def subsetData2(filename,num,column_start,column_end):
+def subsetData(filename,num,column_start,column_end):
       subset = pd.read_csv(filename,nrows=num)
       #subset["Text"] = subset["Title"] + " " + subset["Body"]
       return subset.iloc[:,column_start:column_end]
-
 
 def yLabel(subset,binarizer):
    labels = []
@@ -62,6 +47,16 @@ def yLabel(subset,binarizer):
    y_train = mlb.transform(subset["Tags"])
    return y_train, mlb
  
+def yLabel2(array,binarizer):
+    labels = []
+    for item in array:
+        labels.append(item.split())
+    mlb = binarizer
+    mlb.fit(labels)
+    y_train = mlb.transform(labels)
+    return y_train, mlb
+
+
 def vectorizer(vecMethod,subset):
     vectorizer = vecMethod
     vectorizer.fit(subset)
@@ -78,7 +73,7 @@ def output(outList,test_set_length):
     output_lables = []
     for x in outList:
         output_lables.append(" ".join(x))
-    idLable = list(range(1,test_set_length+1))
+    idLable = list(range(1,len(outList)+1))
     d = {"Id":idLable,"Tags":output_lables}
     final_output = pd.DataFrame(d)
     return final_output
@@ -90,33 +85,38 @@ def output(outList,test_set_length):
 
 
 #---------------Load Data X_train/y_train/X_test---------#
-df = subsetData2(filename,10000,2,4)
-train_length = 3000
-df_test = subsetData2(filename_test,2013337,2,3)
-test_set_length = 2013337
+#
+df = subsetData(filename,25000,2,4)
 
-"""------------------Count Vectorizer----------------------------"""
-y_train, mlb = yLabel(df,MultiLabelBinarizer(sparse_output = True))
-X_train, vect = vectorizer(CountVectorizer(stop_words=text.ENGLISH_STOP_WORDS),df["Body"])
-X_test = xTest(vect,df_test["Body"])
-model_count = 5
+params = [5,7,10]
 
-#--------Random Forest Classifier-----------------------#
-"""Random Forest for Count Vectorizer"""
-start = time.time()
-base_classifier = RandomForestClassifier(random_state = 123)
-problem_transform_classifier = LabelPowerset(classifier = base_classifier,
-        require_dense = [False,False])
-classifier = RakelD(classifier = problem_transform_classifier, labelset_size = 20)
-classifier.fit(X_train,y_train)
-predictions = classifier.predict(X_test)
-output_list = mlb.inverse_transform(predictions)
-end = time.time()
-print(end-start)
-count_vec_output = output(output_list,test_set_length)
-count_vec_output.to_csv("count_vec_output.csv")
+#------------------Count Vectorizer----------------------------#
+X_train_count_vec, vect = vectorizer(CountVectorizer(stop_words=text.ENGLISH_STOP_WORDS),df["Body"])
+y_train_count_vec, mlb = yLabel2(df["Body"].values,MultiLabelBinarizer(sparse_output = True))
+
+X_train, X_test, y_train, y_test = train_test_split(X_train_count_vec,y_train_count_vec, test_size = 0.2,random_state = 0)
+
+for param in params:
+"""Decision Tree for Count Vectorizer"""
+    start = time.time()
+    base_classifier = DecisionTreeClassifier(max_depth = 10)
+    problem_transform_classifier = LabelPowerset(classifier = base_classifier,
+            require_dense = [False,False])
+    classifier = RakelD(classifier = problem_transform_classifier, labelset_size = param)
+    classifier.fit(X_train,y_train)
+    end = time.time()
+    print(end-start)
+    
+    start = time.time()
+    predictions = classifier.predict(X_test)
+    end = time.time()
+    print(end-start)
+    f1, hamming = f1_score(y_test,predictions,average="micro"), hamming_loss(y_test,predictions)
+    print(f1,hamming)
+#output_list = mlb.inverse_transform(predictions)
+#count_vec_output = output(output_list,test_set_length)
+#count_vec_output.to_csv("count_vec_output.csv")
 #------------------------------------------------#
-"""----------------------------------------------------------------"""
 
 
 
@@ -124,40 +124,64 @@ count_vec_output.to_csv("count_vec_output.csv")
 
 #---------------------Tfidf Vectorizer--------------------#
 X_train_tf_idf, tf_idf = vectorizer(TfidfVectorizer(),df["Body"])
-y_train, mlb = yLabel(df,MultiLabelBinarizer(sparse_output = True))
-X_test_tf_idf = xTest(tf_idf,df_test["Body"])
+y_train_tf_idf, mlb = yLabel2(df["Body"].values,MultiLabelBinarizer(sparse_output = True))
 
-"""Random Forest for TfIdf Vectorizer"""
-start = time.time()
-base_classifier = DecisionTreeClassifier()
-problem_transform_classifier = LabelPowerset(classifier = base_classifier,
-        require_dense = [False,False])
-classifier = RakelD(problem_transform_classifier,labelset_size = 10)
-classifier.fit(X_train_tf_idf,y_train)
-predictions = classifier.predict(X_test_tf_idf)
-output_list = mlb.inverse_transform(predictions)
-end = time.time()
-print(end-start)
-tf_idf_output = output(output_list,test_set_length)
-tf_idf_output.to_csv("tf_idf_output.csv")
+X_train, X_test, y_train, y_test = train_test_split(X_train_tf_idf,y_train_tf_idf, test_size = 0.2,random_state = 0)
+
+for param in params:
+"""Decision Tree for TfIdf Vectorizer"""
+    start = time.time()
+    base_classifier = DecisionTreeClassifier(max_depth = 10)
+    problem_transform_classifier = LabelPowerset(classifier = base_classifier,
+            require_dense = [False,False])
+    classifier = RakelD(problem_transform_classifier,labelset_size = param)
+    classifier.fit(X_train,y_train)
+    end = time.time()
+    print(end - start)
+    
+    start = time.time()
+    predictions = classifier.predict(X_test)
+    end = time.time()
+    print(end-start)
+    f1, hamming = f1_score(y_test,predictions,average="micro"), hamming_loss(y_test,predictions)
+    print(f1,hamming)
+
+
+#output_list = mlb.inverse_transform(predictions)
+#tf_idf_output = output(output_list,test_set_length)
+#tf_idf_output.to_csv("tf_idf_output.csv")
 #----------------------------------------------------------#
 
 
 #--------------------Hashing Vectorizer--------------------#
-X_train_hash , hashVec = vectorizer(HashingVectorizer(n_features = 20),df["Body"])
-y_train_hash, mlb = yLabel(df,MultiLabelBinarizer(sparse_output = True))
-X_test_full = xTest(hashVec,df_test["Body"])
+X_train_hash , hashVec = vectorizer(HashingVectorizer(n_features = 50),df["Body"])
+y_train_hash, mlb = yLabel(df["Body"].values,MultiLabelBinarizer(sparse_output = True))
 
-"""Random Forest for Hashing Vectorizer"""
-base_classifier = RandomForestClassifier()
-problem_transform_classifier = LabelPowerset(classifier = base_classifier,
-        require_dense = [False,False])
-classifier = RakelD(problem_transform_classifier,labelset_size = 20)
-classifier.fit(X_train_hash,y_train_hash)
-predictions = classifier.predict(X_test_full)
-output_list = mlb.inverse_transform(predictions)
-hash_output = output(output_list,test_set_length)
-hash_output.to_csv("hash_output.csv")
+X_train, X_test, y_train, y_test = train_test_split(X_train_hash,y_train_hash, test_size = 0.2,random_state = 0)
+
+for param in params:
+"""Decision Tree for Hashing Vectorizer"""
+    start = time.time()
+    base_classifier = DecisionTreeClassifier(max_depth = 10)
+    problem_transform_classifier = LabelPowerset(classifier = base_classifier,
+            require_dense = [False,False])
+    classifier = RakelD(problem_transform_classifier,labelset_size = param)
+    classifier.fit(X_train,y_train)
+    end = time.time()
+    print(end - start)
+    
+    start = time.time()
+    predictions = classifier.predict(X_test)
+    end = time.time()
+    print(end - start)
+    f1, hamming = f1_score(y_test,predictions,average="micro"), hamming_loss(y_test,predictions)
+    print(f1,hamming)
+
+
+
+#output_list = mlb.inverse_transform(predictions)
+#hash_output = output(output_list,test_set_length)
+#hash_output.to_csv("hash_output.csv")
 
 
 
